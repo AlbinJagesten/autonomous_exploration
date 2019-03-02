@@ -67,7 +67,7 @@ class TrajectoryPlanner:
         y = parent.y
         cost = parent.cost
         neighbors = []
-        neighbor_grid = [(-1,1), (0,1), (1,1), (-1,0), (0,0), (1,0), (-1,-1), (0,-1), (1,-1)]
+        neighbor_grid = [(-1,1), (0,1), (1,1), (-1,0), (1,0), (-1,-1), (0,-1), (1,-1)]
 
         for idx in neighbor_grid:
             new_x = x + idx[0]
