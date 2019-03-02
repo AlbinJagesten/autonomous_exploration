@@ -93,11 +93,12 @@ class CostMap:
         """
 
         while not rospy.is_shutdown():
-            costmap_msgs = OccupancyGrid()
-            costmap_msgs.info = self.metadata
-            costmap_msgs.data = np.ravel(self.costmap).tolist()
-            self.pub.publish(costmap_msgs)
-            self.rate.sleep()
+            if self.costmap is not None:
+                costmap_msgs = OccupancyGrid()
+                costmap_msgs.info = self.metadata
+                costmap_msgs.data = np.ravel(self.costmap).tolist()
+                self.pub.publish(costmap_msgs)
+                self.rate.sleep()
 
 
 if __name__ == "__main__":
