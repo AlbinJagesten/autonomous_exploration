@@ -98,7 +98,7 @@ class CostMap:
                 costmap_msgs.info = self.metadata
                 costmap_msgs.data = np.ravel(self.costmap).tolist()
                 self.pub.publish(costmap_msgs)
-                self.rate.sleep()
+            self.rate.sleep()
 
 
 if __name__ == "__main__":
