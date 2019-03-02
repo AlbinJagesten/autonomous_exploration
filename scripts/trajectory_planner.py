@@ -6,6 +6,8 @@ import tf
 import operator
 
 from nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import Path
+from geometry_msgs.msg import PoseStamped, Pose
 
 class TrajectoryPlanner:
 
@@ -14,6 +16,7 @@ class TrajectoryPlanner:
         rospy.init_node('trajectory_planner', anonymous=True)
         rospy.Subscriber('/costmap_2d', OccupancyGrid, self.costmap_callback)
         self.trans_listener = tf.TransformListener()
+        self.traj_pub = rospy.Publisher('/trajectory', Path, queue_size=1)
 
 
     def costmap_callback(self, msg):
@@ -27,22 +30,32 @@ class TrajectoryPlanner:
         self.find_trajectory()
 
 
-    def find_trajectory(self):
+    def find_trajectory(self, cm, cell_x, cell_y):
 
         """
         Return a trajectory i.e. a list of map coordinates
         """
 
-        translation,_ = self.trans_listener.lookupTransform("/map", "/base_footprint", rospy.Time(0))
-        x = int(np.round(translation[0] / self.metadata.resolution) + self.w / 2)
-        y = int(np.round(translation[1] / self.metadata.resolution) + self.h / 2)
+        self.costmap = cm
+        self.w = 6
+        self.h = 6
 
+
+        #translation,_ = self.trans_listener.lookupTransform("/map", "/base_footprint", rospy.Time(0))
+        #self.x = translation[0]
+        #self.y = translation[1]
+        
+        #cell_x = int(np.round(self.x / self.metadata.resolution) + self.w / 2)
+        #cell_y = int(np.round(self.y / self.metadata.resolution) + self.h / 2)
+
+        
+        
         #TODO: Add Dijkstra Algorithm to find Unkown location in costmap
 
         visited = np.zeros(self.costmap.shape)
-        visited[y,x] = 1
+        visited[cell_y,cell_x] = 1
 
-        to_explore = self.add_neighbors(visited, Node(x,y,0,None))
+        to_explore = self.add_neighbors(visited, Node(cell_x,cell_y,0,None))
         to_explore.sort(key=operator.attrgetter('cost'))
 
         while to_explore:   
@@ -57,10 +70,38 @@ class TrajectoryPlanner:
 
 
     def get_trajectory(self, node):
-        print("Done")
-        print(node.x - self.w / 2)
-        print(node.y - self.h / 2)
 
+    
+        path_msg = Path()
+        path_msg.poses = []
+        path_msg.header.frame_id = "/map"
+        
+        while node is not None:
+
+            point = PoseStamped()
+            point.header.frame_id = "/map"
+            point.pose.position.x = (node.x - self.w / 2)#*self.metadata.resolution
+            point.pose.position.y = (node.y - self.h / 2)#*self.metadata.resolution
+
+            print(point.pose.position.x)
+            print(point.pose.position.y)
+            
+
+            path_msg.poses.append(point)
+
+            node = node.parent
+
+
+        current_point = PoseStamped()
+        current_point.pose.position.x = -3
+        current_point.pose.position.y = -2
+
+        path_msg.poses.append(current_point)
+
+        path_msg.poses.reverse()
+
+        self.traj_pub.publish(path_msg)
+            
 
     def add_neighbors(self,visited, parent):
         x = parent.x
@@ -107,7 +148,16 @@ class Node:
 
 
 if __name__ == "__main__":
+
+    test_map = np.array([[100, 100, 1, 1, 0, 1],
+                         [1, 100, 100, 1, 1, 1],
+                         [1, 1, 100, 100, 1, 1],
+                         [1, 1, 1, 100, 1, 1],
+                         [1, 1, 1, 1, 1, 1],
+                         [1, 1, 1, 1, 1, 1]])
+    
     traj_plan = TrajectoryPlanner()
-    traj_plan.run()
+    traj_plan.find_trajectory(test_map, 0, 1)
+    #traj_plan.run()
     
     
