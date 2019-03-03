@@ -35,11 +35,15 @@ class CostMap:
         self.metadata = msg.info
         self.w = self.metadata.width
         self.h = self.metadata.height
+        #print("h, w = ",self.h,self.h)
         self.map = np.array(msg.data).reshape((self.h,self.w))
 
         if self.costmap is None:
             self.costmap = np.zeros((self.h,self.w))
         self.update_costmap()
+
+        print("max",np.max(self.costmap))
+        print("min",np.min(self.costmap))
 
 
     def update_costmap(self):
@@ -54,6 +58,7 @@ class CostMap:
         Cost map values:
             100 - Obstacle (lethal)
              99 - Inflation radius (lethal)
+           98:2 - decay from obstacle
               1 - Free space
               0 - Unknown 
         """
@@ -65,6 +70,7 @@ class CostMap:
                 if val == 100 and self.costmap[y,x] != 100:
                     self.costmap[y,x] = 100
                     self.make_square(y,x)
+                    self.decay_obstacle(y,x)
 
                 elif val == 0 and self.costmap[y,x] == 0:
                     self.costmap[y,x] = 1
@@ -85,6 +91,39 @@ class CostMap:
             for j in range(min_x,max_x):
                 if self.costmap[i,j] != 100:
                     self.costmap[i,j] = 99
+
+    def decay_obstacle(self,y,x):
+    	"""
+    	Adds a cost as per a decay function around an obstacle
+    	"""
+
+    	r = int(np.ceil(self.radius / self.metadata.resolution))
+    	R = 5*r 	#add decay for distance 5*r 
+        min_x = max(0, x - R)
+        max_x = min(self.w , x + R + 1)
+        min_y = max(0, y - R)
+        max_y = min(self.h , y + R + 1)
+
+        
+        for i in range(min_y,max_y):
+            for j in range(min_x,max_x):
+
+            	#calculate the decay value:
+            	dist_x = np.absolute(x - j)
+            	dist_y = np.absolute(y - i)
+            	dist = np.sqrt(dist_x**2 + dist_y**2)
+
+            	#implementing linear cost decay
+            	cost_decay = (dist - R)*(98-2)/(r-R) + 2
+
+            	cost_decay_int = np.rint(cost_decay)
+
+
+                if (self.costmap[i,j] < cost_decay_int) and (cost_decay_int < 99):
+                    self.costmap[i,j] = cost_decay_int
+        
+
+
 
 
     def run(self):
