@@ -18,7 +18,7 @@ class CostMap:
 
         rospy.init_node('costmap_2d', anonymous=True)
         rospy.Subscriber('/map', OccupancyGrid, self.map_callback)
-        self.pub = rospy.Publisher('costmap_2d', OccupancyGrid, queue_size=1)
+        self.pub = rospy.Publisher('costmap_2d', OccupancyGrid, queue_size=1) #queue size one  why?
         self.map = None
         self.metadata = None
         self.costmap = None
