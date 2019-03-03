@@ -9,8 +9,6 @@ from nav_msgs.msg import OccupancyGrid
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped, Pose
 
-CENTEROFFSET = 8
-
 class TrajectoryPlanner:
 
 
@@ -28,8 +26,23 @@ class TrajectoryPlanner:
         self.metadata = msg.info
         self.w = self.metadata.width
         self.h = self.metadata.height
+        self.fix_offset()      
         self.costmap = np.array(msg.data).reshape((self.h,self.w))
         self.find_trajectory()
+
+
+    def fix_offset(self):
+        res = self.metadata.resolution
+        x_diff = self.w / 2 * res + self.metadata.origin.position.x
+        if x_diff < 0:
+            self.x_offset = int(np.round(x_diff / res))
+        else:
+            self.x_offset = -int(np.round(x_diff / res))
+        y_diff = self.h / 2 * res + self.metadata.origin.position.y
+        if y_diff < 0:
+            self.y_offset = int(np.round(y_diff / res))
+        else:
+            self.y_offset = -int(np.round(y_diff / res))
 
 
     def find_trajectory(self):
@@ -42,8 +55,8 @@ class TrajectoryPlanner:
         self.x = translation[0]
         self.y = translation[1]
         
-        cell_x = int(np.floor(self.x / self.metadata.resolution) + self.w / 2) + CENTEROFFSET
-        cell_y = int(np.floor(self.y / self.metadata.resolution) + self.h / 2) + CENTEROFFSET
+        cell_x = int(np.floor(self.x / self.metadata.resolution) + self.w / 2) - self.x_offset
+        cell_y = int(np.floor(self.y / self.metadata.resolution) + self.h / 2) - self.y_offset
         
         #TODO: Add Dijkstra Algorithm to find Unkown location in costmap
 
@@ -102,21 +115,12 @@ class TrajectoryPlanner:
 
             point = PoseStamped()
             point.header.frame_id = "/map"
-            point.pose.position.x = (node.x - self.w / 2 + 0.5 - CENTEROFFSET)*self.metadata.resolution
-            point.pose.position.y = (node.y - self.h / 2 + 0.5 - CENTEROFFSET)*self.metadata.resolution
-            print(point.pose.position.x,point.pose.position.y)
+            point.pose.position.x = (node.x - self.w / 2 + 0.5 + self.x_offset)*self.metadata.resolution
+            point.pose.position.y = (node.y - self.h / 2 + 0.5 + self.y_offset)*self.metadata.resolution
 
             path_msg.poses.append(point)
 
             node = node.parent
-
-
-        #print(self.x,self.y)
-        #current_point = PoseStamped()
-        #current_point.pose.position.x = self.x
-        #current_point.pose.position.y = self.y
-
-        #path_msg.poses.append(current_point)
 
         path_msg.poses.reverse()
 
