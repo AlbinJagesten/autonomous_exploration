@@ -9,6 +9,8 @@ from nav_msgs.msg import OccupancyGrid
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped, Pose
 
+CENTEROFFSET = 8
+
 class TrajectoryPlanner:
 
 
@@ -40,10 +42,8 @@ class TrajectoryPlanner:
         self.x = translation[0]
         self.y = translation[1]
         
-        cell_x = int(np.round(self.x / self.metadata.resolution) + self.w / 2)
-        cell_y = int(np.round(-self.y / self.metadata.resolution) + self.h / 2)
-        print(cell_x,cell_y)
-        
+        cell_x = int(np.round(self.x / self.metadata.resolution) + self.w / 2) + CENTEROFFSET
+        cell_y = int(np.round(self.y / self.metadata.resolution) + self.h / 2) + CENTEROFFSET
         
         #TODO: Add Dijkstra Algorithm to find Unkown location in costmap
 
@@ -55,7 +55,6 @@ class TrajectoryPlanner:
 
         while to_explore:   
             next_node = to_explore.pop(0)
-            print(next_node.x-self.w/2, next_node.y-self.h/2)
             if next_node.cost == -1:
                 self.get_trajectory(next_node)
                 break
@@ -104,10 +103,9 @@ class TrajectoryPlanner:
 
             point = PoseStamped()
             point.header.frame_id = "/map"
-            point.pose.position.x = (node.x - self.w / 2 - 0.5)*self.metadata.resolution
-            point.pose.position.y = -(node.y - self.h / 2 + 0.5)*self.metadata.resolution
+            point.pose.position.x = (node.x - self.w / 2 + 0.5 - CENTEROFFSET)*self.metadata.resolution
+            point.pose.position.y = (node.y - self.h / 2 + 0.5 - CENTEROFFSET)*self.metadata.resolution
             print(point.pose.position.x,point.pose.position.y)
-            
 
             path_msg.poses.append(point)
 
