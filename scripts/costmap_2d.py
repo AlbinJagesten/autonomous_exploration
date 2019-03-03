@@ -40,6 +40,7 @@ class CostMap:
         if self.costmap is None:
             self.costmap = np.zeros((self.h,self.w))
         self.update_costmap()
+        
 
 
     def update_costmap(self):
@@ -96,6 +97,8 @@ class CostMap:
             if self.costmap is not None:
                 costmap_msgs = OccupancyGrid()
                 costmap_msgs.info = self.metadata
+                costmap_msgs.info.origin.position.x = -(self.w / 2.0) * self.metadata.resolution
+                costmap_msgs.info.origin.position.y = -(self.h / 2.0) * self.metadata.resolution
                 costmap_msgs.data = np.ravel(self.costmap).tolist()
                 self.pub.publish(costmap_msgs)
             self.rate.sleep()
