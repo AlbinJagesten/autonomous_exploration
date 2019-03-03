@@ -42,8 +42,8 @@ class TrajectoryPlanner:
         self.x = translation[0]
         self.y = translation[1]
         
-        cell_x = int(np.round(self.x / self.metadata.resolution) + self.w / 2) + CENTEROFFSET
-        cell_y = int(np.round(self.y / self.metadata.resolution) + self.h / 2) + CENTEROFFSET
+        cell_x = int(np.floor(self.x / self.metadata.resolution) + self.w / 2) + CENTEROFFSET
+        cell_y = int(np.floor(self.y / self.metadata.resolution) + self.h / 2) + CENTEROFFSET
         
         #TODO: Add Dijkstra Algorithm to find Unkown location in costmap
 
@@ -75,7 +75,7 @@ class TrajectoryPlanner:
             new_y = y + idx[1]
             if self.valid_pos(new_x, new_y, visited):
                 visited[new_y, new_x] = 1
-                neighbors.append(self.new_node(new_x, new_y, cost, parent))
+                neighbors.append(self.new_node(new_x, new_y, cost + np.linalg.norm(idx), parent))
 
         return neighbors
 
@@ -87,10 +87,9 @@ class TrajectoryPlanner:
 
 
     def new_node(self, x, y, cost, parent):
-        print(x,y,cost)
         if self.costmap[y,x] == 0:
             return Node(x,y,-1,parent)
-        return Node(x,y,cost+1,parent)
+        return Node(x,y,cost,parent)
 
 
     def get_trajectory(self, node):
