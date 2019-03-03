@@ -13,6 +13,10 @@ class TrajectoryPlanner:
 
 
     def __init__(self):
+        """
+        Initilizes trajectory planner. Subscribes to costmap and publishes a trajectory to the closest unknown cell.
+        """
+        
         rospy.init_node('trajectory_planner', anonymous=True)
         rospy.Subscriber('/costmap_2d', OccupancyGrid, self.costmap_callback)
         self.trans_listener = tf.TransformListener()
@@ -21,8 +25,9 @@ class TrajectoryPlanner:
 
     def costmap_callback(self, msg):
         """
-        Callback function for /costmap_2d topic
+        Callback function for /costmap_2d topic.
         """
+        
         self.metadata = msg.info
         self.w = self.metadata.width
         self.h = self.metadata.height
@@ -32,12 +37,18 @@ class TrajectoryPlanner:
 
 
     def fix_offset(self):
+        """
+        Corrects map offset.
+        """
+        
         res = self.metadata.resolution
+        
         x_diff = self.w / 2 * res + self.metadata.origin.position.x
         if x_diff < 0:
             self.x_offset = int(np.round(x_diff / res))
         else:
             self.x_offset = -int(np.round(x_diff / res))
+            
         y_diff = self.h / 2 * res + self.metadata.origin.position.y
         if y_diff < 0:
             self.y_offset = int(np.round(y_diff / res))
@@ -46,9 +57,9 @@ class TrajectoryPlanner:
 
 
     def find_trajectory(self):
-
         """
-        Return a trajectory i.e. a list of map coordinates
+        Return a trajectory i.e. a list of map coordinates.
+        Runs a modified Dijkstra algorithm to find the closest unknown cell.
         """
 
         translation,_ = self.trans_listener.lookupTransform("/map", "/base_footprint", rospy.Time(0))
@@ -57,8 +68,6 @@ class TrajectoryPlanner:
         
         cell_x = int(np.floor(self.x / self.metadata.resolution) + self.w / 2) - self.x_offset
         cell_y = int(np.floor(self.y / self.metadata.resolution) + self.h / 2) - self.y_offset
-        
-        #TODO: Add Dijkstra Algorithm to find Unkown location in costmap
 
         visited = np.zeros(self.costmap.shape)
         visited[cell_y,cell_x] = 1
@@ -66,6 +75,7 @@ class TrajectoryPlanner:
         to_explore = self.add_neighbors(visited, Node(cell_x,cell_y,0,None))
         to_explore.sort(key=operator.attrgetter('cost'))
 
+        # Run modified Dijkstra algorithm
         while to_explore:   
             next_node = to_explore.pop(0)
             if next_node.cost == -1:
@@ -76,7 +86,11 @@ class TrajectoryPlanner:
             to_explore.sort(key=operator.attrgetter('cost'))
             
 
-    def add_neighbors(self,visited, parent):
+    def add_neighbors(self, visited, parent):
+        """
+        Returns adjacent neighbors that are not an obstacle and not already visited.
+        """
+        
         x = parent.x
         y = parent.y
         cost = parent.cost
@@ -88,7 +102,8 @@ class TrajectoryPlanner:
             new_y = y + idx[1]
             if self.valid_pos(new_x, new_y, visited):
                 visited[new_y, new_x] = 1
-                neighbors.append(self.new_node(new_x, new_y, cost + np.linalg.norm(idx), parent))
+                new_cost = cost + np.linalg.norm(idx)*self.costmap[new_y, new_x]
+                neighbors.append(self.new_node(new_x, new_y, new_cost, parent))
 
         return neighbors
 
