@@ -5,6 +5,9 @@ import numpy as np
 
 from nav_msgs.msg import OccupancyGrid
 
+DECAY_RADIUS_MULTIPLIER = 5 # R = DECAY_RADIUS_MULTIPLIER*r
+ROBOT_DIAMETER = 0.15
+
 class CostMap:
     """
     Subscribes to "/map" and creates a costmap by inflating walls by robot radius.
@@ -63,17 +66,28 @@ class CostMap:
               0 - Unknown 
         """
 
+        print("Mapval",self.map[self.h/2,self.w/2])
+
+
         for y in range(self.h):
             for x in range(self.w):
                 val = self.map[y,x]
 
-                if val == 100 and self.costmap[y,x] != 100:
+
+
+                if val == 100 and self.costmap[y,x] !=100: #obstacle
                     self.costmap[y,x] = 100
                     self.make_square(y,x)
                     self.decay_obstacle(y,x)
 
-                elif val == 0 and self.costmap[y,x] == 0:
+                elif val == 0 and self.costmap[y,x] ==0: #known free space
                     self.costmap[y,x] = 1
+
+        for y in range(self.h):
+        	for x in range(self.w):
+        		self.update_unknown_space(y,x)
+                
+
 
 
     def make_square(self,y,x):
@@ -98,7 +112,7 @@ class CostMap:
     	"""
 
     	r = int(np.ceil(self.radius / self.metadata.resolution))
-    	R = 5*r 	#add decay for distance 5*r 
+    	R = DECAY_RADIUS_MULTIPLIER*r 	#add decay for distance 5*r 
         min_x = max(0, x - R)
         max_x = min(self.w , x + R + 1)
         min_y = max(0, y - R)
@@ -119,10 +133,14 @@ class CostMap:
             	cost_decay_int = np.rint(cost_decay)
 
 
-                if (self.costmap[i,j] < cost_decay_int) and (cost_decay_int < 99):
+                if (self.costmap[i,j] < cost_decay_int) and (cost_decay_int < 99) and (cost_decay_int > 1):
                     self.costmap[i,j] = cost_decay_int
         
 
+    def update_unknown_space(self,y,x):
+
+    	if self.map[y,x] == -1 and self.costmap[y,x] == 1:	#if unknown and was previously free space (non obstacle)
+    		self.costmap[y,x] = 0
 
 
 
@@ -141,5 +159,6 @@ class CostMap:
 
 
 if __name__ == "__main__":
-    costmap = CostMap(0.15 / 2.0)
+
+    costmap = CostMap(ROBOT_DIAMETER/ 2.0)
     costmap.run()
