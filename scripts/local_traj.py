@@ -40,7 +40,7 @@ class LocalPlanner:
 
     def traj_callback(self,msg):
         """
-        Takes the trajectory path and loops though each pose till a pose is found that is in a "dangerous" cell 
+        Takes the trajectory path and loops though each pose and publishes it till a pose is found that is in a "dangerous" cell 
         Once found, publishes the last feasible pose to the cmd_pose topic.
 
         PLEASE CORRECT FOR OFFSET IF NEEDED 
@@ -59,10 +59,10 @@ class LocalPlanner:
                     self.x = translation[0]
                     self.y = translation[1]
                     quaternion = (
-                                path_msg[i].pose.orientation.x,
-                                path_msg[i].pose.orientation.y,
-                                path_msg[i].pose.orientation.z,
-                                path_msg[i].pose.orientation.w)
+                                rotation.x,
+                                rotation.y,
+                                rotation.z,
+                                rotation.w)
                     euler = tf.transformations.euler_from_quaternion(quaternion)
                     self.theta = euler[2]
                     pose_g_msg = Pose2D()
@@ -71,6 +71,9 @@ class LocalPlanner:
                     pose_g_msg.theta = self.theta
                     self.pose_new_goal_publisher.publish(pose_g_msg)
                     return
+                return
+            
+            else:
                 quaternion = (
                             path_msg[i].pose.orientation.x,
                             path_msg[i].pose.orientation.y,
@@ -82,21 +85,6 @@ class LocalPlanner:
                 pose_g_msg.y = y_pose
                 pose_g_msg.theta = euler[2]
                 self.pose_new_goal_publisher.publish(pose_g_msg)
-                return
-        x_pose = path_msg[-1].pose.position.x
-        y_pose = path_msg[-1].pose.position.y
-        quaternion = (
-                    path_msg[-1].pose.orientation.x,
-                    path_msg[-1].pose.orientation.y,
-                    path_msg[-1].pose.orientation.z,
-                    path_msg[-1].pose.orientation.w)
-        euler = tf.transformations.euler_from_quaternion(quaternion)
-        # euler = tf.transformations.euler_from_quaternion(path_msg[-1].pose.orientation)
-        pose_g_msg = Pose2D()
-        pose_g_msg.x = x_pose
-        pose_g_msg.y = y_pose
-        pose_g_msg.theta = euler[2]
-        self.pose_new_goal_publisher.publish(pose_g_msg)
         return           
 
 
