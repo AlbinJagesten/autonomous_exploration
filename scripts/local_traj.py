@@ -15,7 +15,8 @@ class LocalPlanner:
 
     def __init__(self):
         """
-        Initilizes trajectory planner. Subscribes to costmap and publishes a trajectory to the closest unknown cell.
+        Initilizes trajectory planner. Subscribes to costmap and publishes a trajectory based on subscribed path message but
+        with trimmed poses to take care of dangerous cells.
         """
 
         rospy.init_node('local_planner', anonymous=True)
