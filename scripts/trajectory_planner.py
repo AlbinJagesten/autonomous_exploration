@@ -6,45 +6,76 @@ import tf
 import operator
 
 from nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import Path
+from geometry_msgs.msg import PoseStamped, Pose
 
 class TrajectoryPlanner:
 
 
     def __init__(self):
+        """
+        Initilizes trajectory planner. Subscribes to costmap and publishes a trajectory to the closest unknown cell.
+        """
+        
         rospy.init_node('trajectory_planner', anonymous=True)
         rospy.Subscriber('/costmap_2d', OccupancyGrid, self.costmap_callback)
         self.trans_listener = tf.TransformListener()
+        self.traj_pub = rospy.Publisher('/trajectory', Path, queue_size=1)
 
 
     def costmap_callback(self, msg):
         """
-        Callback function for /costmap_2d topic
+        Callback function for /costmap_2d topic.
         """
+        
         self.metadata = msg.info
         self.w = self.metadata.width
         self.h = self.metadata.height
+        self.fix_offset()      
         self.costmap = np.array(msg.data).reshape((self.h,self.w))
         self.find_trajectory()
 
 
-    def find_trajectory(self):
-
+    def fix_offset(self):
         """
-        Return a trajectory i.e. a list of map coordinates
+        Corrects map offset.
+        """
+        
+        res = self.metadata.resolution
+        
+        x_diff = self.w / 2 * res + self.metadata.origin.position.x
+        if x_diff < 0:
+            self.x_offset = int(np.round(x_diff / res))
+        else:
+            self.x_offset = -int(np.round(x_diff / res))
+            
+        y_diff = self.h / 2 * res + self.metadata.origin.position.y
+        if y_diff < 0:
+            self.y_offset = int(np.round(y_diff / res))
+        else:
+            self.y_offset = -int(np.round(y_diff / res))
+
+
+    def find_trajectory(self):
+        """
+        Return a trajectory i.e. a list of map coordinates.
+        Runs a modified Dijkstra algorithm to find the closest unknown cell.
         """
 
         translation,_ = self.trans_listener.lookupTransform("/map", "/base_footprint", rospy.Time(0))
-        x = int(np.round(translation[0] / self.metadata.resolution) + self.w / 2)
-        y = int(np.round(translation[1] / self.metadata.resolution) + self.h / 2)
-
-        #TODO: Add Dijkstra Algorithm to find Unkown location in costmap
+        self.x = translation[0]
+        self.y = translation[1]
+        
+        cell_x = int(np.floor(self.x / self.metadata.resolution) + self.w / 2) - self.x_offset
+        cell_y = int(np.floor(self.y / self.metadata.resolution) + self.h / 2) - self.y_offset
 
         visited = np.zeros(self.costmap.shape)
-        visited[y,x] = 1
+        visited[cell_y,cell_x] = 1
 
-        to_explore = self.add_neighbors(visited, Node(x,y,0,None))
+        to_explore = self.add_neighbors(visited, Node(cell_x,cell_y,0,None))
         to_explore.sort(key=operator.attrgetter('cost'))
 
+        # Run modified Dijkstra algorithm
         while to_explore:   
             next_node = to_explore.pop(0)
             if next_node.cost == -1:
@@ -53,16 +84,13 @@ class TrajectoryPlanner:
             
             to_explore = to_explore + self.add_neighbors(visited, next_node)
             to_explore.sort(key=operator.attrgetter('cost'))
+            
 
-
-
-    def get_trajectory(self, node):
-        print("Done")
-        print(node.x - self.w / 2)
-        print(node.y - self.h / 2)
-
-
-    def add_neighbors(self,visited, parent):
+    def add_neighbors(self, visited, parent):
+        """
+        Returns adjacent neighbors that are not an obstacle and not already visited.
+        """
+        
         x = parent.x
         y = parent.y
         cost = parent.cost
@@ -74,22 +102,44 @@ class TrajectoryPlanner:
             new_y = y + idx[1]
             if self.valid_pos(new_x, new_y, visited):
                 visited[new_y, new_x] = 1
-                neighbors.append(self.new_node(new_x, new_y, cost, parent))
+                new_cost = cost + np.linalg.norm(idx)*self.costmap[new_y, new_x]
+                neighbors.append(self.new_node(new_x, new_y, new_cost, parent))
 
         return neighbors
 
 
     def valid_pos(self, x, y, visited):
-        try:
+        if x > -1 and y > -1 and x < self.w and y < self.h:
             return visited[y,x] == 0 and self.costmap[y,x]<99
-        except IndexError:
-            return False
+        return False
 
 
     def new_node(self, x, y, cost, parent):
         if self.costmap[y,x] == 0:
             return Node(x,y,-1,parent)
-        return Node(x,y,cost+1,parent)
+        return Node(x,y,cost,parent)
+
+
+    def get_trajectory(self, node):
+
+        path_msg = Path()
+        path_msg.poses = []
+        path_msg.header.frame_id = "/map"
+        
+        while node is not None:
+
+            point = PoseStamped()
+            point.header.frame_id = "/map"
+            point.pose.position.x = (node.x - self.w / 2 + 0.5 + self.x_offset)*self.metadata.resolution
+            point.pose.position.y = (node.y - self.h / 2 + 0.5 + self.y_offset)*self.metadata.resolution
+
+            path_msg.poses.append(point)
+
+            node = node.parent
+
+        path_msg.poses.reverse()
+
+        self.traj_pub.publish(path_msg)
 
 
     def run(self):
@@ -107,6 +157,7 @@ class Node:
 
 
 if __name__ == "__main__":
+
     traj_plan = TrajectoryPlanner()
     traj_plan.run()
     
