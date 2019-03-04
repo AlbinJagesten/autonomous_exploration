@@ -44,6 +44,7 @@ class CostMap:
         if self.costmap is None:
             self.costmap = np.zeros((self.h,self.w))
         self.update_costmap()
+        
 
         print("max",np.max(self.costmap))
         print("min",np.min(self.costmap))
