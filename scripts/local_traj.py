@@ -20,10 +20,10 @@ class LocalPlanner:
         """
 
         rospy.init_node('local_planner', anonymous=True)
-        rospy.Subscriber('/costmap_2d', OccupancyGrid, self.costmap_callback)
-        rospy.Subscriber('/trajectory', Path, self.traj_callback)
         self.pose_new_goal_publisher = rospy.Publisher('/cmd_pose', Pose2D, queue_size=10)
         self.trans_listener = tf.TransformListener()
+        rospy.Subscriber('/costmap_2d', OccupancyGrid, self.costmap_callback)
+        rospy.Subscriber('/trajectory', Path, self.traj_callback)
         
 
 
@@ -36,7 +36,27 @@ class LocalPlanner:
         self.w = self.metadata.width
         self.h = self.metadata.height      
         self.costmap = np.array(msg.data).reshape((self.h,self.w))
+        self.fix_offset()
 
+
+    def fix_offset(self):
+        """
+        Corrects map offset.
+        """
+        
+        res = self.metadata.resolution
+        
+        x_diff = self.w / 2 * res + self.metadata.origin.position.x
+        if x_diff < 0:
+            self.x_offset = int(np.round(x_diff / res))
+        else:
+            self.x_offset = -int(np.round(x_diff / res))
+            
+        y_diff = self.h / 2 * res + self.metadata.origin.position.y
+        if y_diff < 0:
+            self.y_offset = int(np.round(y_diff / res))
+        else:
+            self.y_offset = -int(np.round(y_diff / res))
 
 
     def traj_callback(self,msg):
@@ -53,8 +73,8 @@ class LocalPlanner:
         for i in range(len(path_msg)):
             x_pose = path_msg[i].pose.position.x
             y_pose = path_msg[i].pose.position.y
-            cell_x = int(np.floor(x_pose / self.metadata.resolution) + self.w / 2)
-            cell_y = int(np.floor(y_pose / self.metadata.resolution) + self.h / 2)
+            cell_x = int(np.floor(x_pose / self.metadata.resolution) + self.w / 2) - self.x_offset
+            cell_y = int(np.floor(y_pose / self.metadata.resolution) + self.h / 2) - self.y_offset
             if(self.costmap[cell_y,cell_x]>=99):
                 if(i==0):
                     x = translation[0]
@@ -67,8 +87,8 @@ class LocalPlanner:
                     euler = tf.transformations.euler_from_quaternion(quaternion)
                     self.theta = euler[2]
                     pose_g_msg = Pose2D()
-                    pose_g_msg.x = self.x
-                    pose_g_msg.y = self.y
+                    pose_g_msg.x = x
+                    pose_g_msg.y = y
                     pose_g_msg.theta = self.theta
                     self.pose_new_goal_publisher.publish(pose_g_msg)
                     return
@@ -86,7 +106,7 @@ class LocalPlanner:
                 pose_g_msg.y = y_pose
                 pose_g_msg.theta = np.arctan2((y_pose - translation[1]),(x_pose - translation[0]))
                 self.pose_new_goal_publisher.publish(pose_g_msg)
-        return           
+        return
 
 
     def run(self):
