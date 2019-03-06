@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+'''
+costmap_2d: This node overlays the /map published by /gmapping
+with costs as per a convention mentioned below, suitable for 
+autonomous exploration and mapping.
+
+AUTHORS: Albin Jagesten and Varun Nayak
+'''
+
 import rospy
 import numpy as np
 
