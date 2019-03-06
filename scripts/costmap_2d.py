@@ -14,7 +14,7 @@ import numpy as np
 from nav_msgs.msg import OccupancyGrid
 
 DECAY_RADIUS_MULTIPLIER = 5 # R = DECAY_RADIUS_MULTIPLIER*r
-ROBOT_DIAMETER = 0.15
+ROBOT_DIAMETER = 0.15 #15cm
 
 class CostMap:
     """
