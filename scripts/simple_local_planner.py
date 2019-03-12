@@ -5,6 +5,7 @@ import numpy as np
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped, Pose2D
+from std_msgs.msg import Bool
 
 POINT_STEP = 5
 
@@ -25,13 +26,15 @@ class LocalPlanner:
 
         rospy.init_node("local_planner", anonymous=True)
 
-        rospy.Subscriber('/trajectory', Path, self.trajectory_callback)
-        self.pose_pub = rospy.Publisher('/cmd_pose', Pose2D, queue_size=1) 
+        rospy.Subscriber('/cmd_path', Path, self.trajectory_callback)
+        rospy.Subscriber('/exploration_complete', Bool, self.exploration_complete_callback)
+        
+        self.pose_pub = rospy.Publisher('/cmd_pose', Pose2D, queue_size=1)
+        
         
         
     def trajectory_callback(self, path_msg):
 
-        #for i in range(0, len(path_msg.poses), POINT_STEP):
         i = min(POINT_STEP - 1, len(path_msg.poses)-2)
             
         current_x = path_msg.poses[i].pose.position.x
@@ -44,6 +47,17 @@ class LocalPlanner:
         pose.y = current_y
         pose.theta = angle_between(np.array([current_x, current_y]), np.array([next_x, next_y]))
         self.pose_pub.publish(pose)
+
+    def exploration_complete_callback(self, msg):
+        """
+        Terminates the node if exploration is complete.
+        """
+
+        exploration_complete = msg.data
+
+        if exploration_complete:
+            rospy.signal_shutdown("Exploration complete.")
+        
 
     def run(self):
         rospy.spin()

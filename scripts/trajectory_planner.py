@@ -8,6 +8,13 @@ import operator
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped, Pose
+from std_msgs.msg import Bool
+
+# Threshold for considering an unknown cell a candidate goal cell
+NUMBER_UNKNOWN_NEIGHBORS = 2
+
+# Threshold for number of fails after which we terminate the search
+NUMBER_OF_FAILS = 3
 
 class TrajectoryPlanner:
 
@@ -18,9 +25,26 @@ class TrajectoryPlanner:
         """
         
         rospy.init_node('trajectory_planner', anonymous=True)
+        
         rospy.Subscriber('/costmap_2d', OccupancyGrid, self.costmap_callback)
+        rospy.Subscriber('/exploration_complete', Bool, self.exploration_complete_callback)
         self.trans_listener = tf.TransformListener()
-        self.traj_pub = rospy.Publisher('/trajectory', Path, queue_size=1)
+        
+        self.traj_pub = rospy.Publisher('/cmd_path', Path, queue_size=1)
+        self.exp_complete_pub = rospy.Publisher('/exploration_complete', Bool, queue_size=1)
+
+        self.number_of_fails = 0
+        
+
+    def exploration_complete_callback(self, msg):
+        """
+        Terminates the node if exploration is complete.
+        """
+
+        exploration_complete = msg.data
+
+        if exploration_complete:
+            rospy.signal_shutdown("Exploration complete.")
 
 
     def costmap_callback(self, msg):
@@ -79,12 +103,22 @@ class TrajectoryPlanner:
         while to_explore:   
             next_node = to_explore.pop(0)
             if next_node.cost == -1:
+                print("Found goal!")
+                self.number_of_fails = 0
                 self.get_trajectory(next_node)
-                break
+                return
             
             to_explore = to_explore + self.add_neighbors(visited, next_node)
             to_explore.sort(key=operator.attrgetter('cost'))
-            
+
+        self.number_of_fails += 1
+        print("Failed: %d times % self.number_of_fails")
+
+        if self.number_of_fails >= NUMBER_OF_FAILS:
+            print("Exiting!")
+            msg = Bool()
+            msg.data = True
+            self.exp_complete_pub.publish(msg)
 
     def add_neighbors(self, visited, parent):
         """
@@ -102,22 +136,40 @@ class TrajectoryPlanner:
             new_y = y + idx[1]
             if self.valid_pos(new_x, new_y, visited):
                 visited[new_y, new_x] = 1
-                new_cost = cost + np.linalg.norm(idx)*self.costmap[new_y, new_x]
-                neighbors.append(self.new_node(new_x, new_y, new_cost, parent))
+                if self.valid_cost(x,y):
+                    new_cost = cost + np.linalg.norm(idx)*self.costmap[new_y, new_x]
+                    neighbors.append(self.new_node(new_x, new_y, new_cost, parent))
 
         return neighbors
 
 
     def valid_pos(self, x, y, visited):
         if x > -1 and y > -1 and x < self.w and y < self.h:
-            return visited[y,x] == 0 and self.costmap[y,x]<99
+            return visited[y,x] == 0
         return False
+
+    def valid_cost(self, x, y):
+        return self.costmap[y,x]<99
 
 
     def new_node(self, x, y, cost, parent):
         if self.costmap[y,x] == 0:
-            return Node(x,y,-1,parent)
+            if self.count_unknown_neighbors(x, y) >= NUMBER_UNKNOWN_NEIGHBORS:
+                return Node(x,y,-1,parent)
         return Node(x,y,cost,parent)
+
+    def count_unknown_neighbors(self, x, y):
+
+        neighbor_grid = [(-1,1), (0,1), (1,1), (-1,0), (1,0), (-1,-1), (0,-1), (1,-1)]
+        
+        count = 0
+        for idx in neighbor_grid:
+            new_x = x + idx[0]
+            new_y = y + idx[1]
+            if self.costmap[new_y, new_x] == 0:
+                count += 1
+
+        return count
 
 
     def get_trajectory(self, node):

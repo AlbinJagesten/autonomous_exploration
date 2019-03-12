@@ -12,6 +12,7 @@ import rospy
 import numpy as np
 
 from nav_msgs.msg import OccupancyGrid
+from std_msgs.msg import Bool
 
 DECAY_RADIUS_MULTIPLIER = 5 # R = DECAY_RADIUS_MULTIPLIER*r
 ROBOT_DIAMETER = 0.15 #15cm
@@ -28,8 +29,12 @@ class CostMap:
         """
 
         rospy.init_node('costmap_2d', anonymous=True)
+        
         rospy.Subscriber('/map', OccupancyGrid, self.map_callback)
-        self.pub = rospy.Publisher('costmap_2d', OccupancyGrid, queue_size=1) #queue size one  why?
+        
+        self.pub = rospy.Publisher('costmap_2d', OccupancyGrid, queue_size=1)
+        rospy.Subscriber('/exploration_complete', Bool, self.exploration_complete_callback)
+        
         self.map = None
         self.metadata = None
         self.costmap = None
@@ -37,6 +42,17 @@ class CostMap:
         self.h = 0
         self.radius = radius
         self.rate = rospy.Rate(1)
+
+
+    def exploration_complete_callback(self, msg):
+        """
+        Terminates the node if exploration is complete.
+        """
+
+        exploration_complete = msg.data
+
+        if exploration_complete:
+            rospy.signal_shutdown("Exploration complete.")
 
 
     def map_callback(self, msg):
