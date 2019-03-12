@@ -62,11 +62,15 @@ class CostMap:
         self.metadata = msg.info
         self.w = self.metadata.width
         self.h = self.metadata.height
-        #print("h, w = ",self.h,self.h)
         self.map = np.array(msg.data).reshape((self.h,self.w))
 
         if self.costmap is None:
             self.costmap = np.zeros((self.h,self.w))
+            for i in range(self.h/2 - 10, self.h/2 + 18):
+                for j in range(self.w/2 - 10, self.w/2 + 18):
+                    if self.costmap[i,j] == 0:
+                        self.costmap[i,j] = 1
+
         self.update_costmap()
         
 
@@ -91,7 +95,7 @@ class CostMap:
               0 - Unknown 
         """
 
-        print("Mapval",self.map[self.h/2,self.w/2])
+        #print("Mapval",self.map[self.h/2,self.w/2])
 
 
         for y in range(self.h):
@@ -107,11 +111,6 @@ class CostMap:
 
                 elif val == 0 and self.costmap[y,x] ==0: #known free space
                     self.costmap[y,x] = 1
-
-        for y in range(self.h):
-        	for x in range(self.w):
-        		self.update_unknown_space(y,x)
-                
 
 
 
@@ -162,10 +161,12 @@ class CostMap:
                     self.costmap[i,j] = cost_decay_int
         
 
+    """
     def update_unknown_space(self,y,x):
 
     	if self.map[y,x] == -1 and self.costmap[y,x] == 1:	#if unknown and was previously free space (non obstacle)
     		self.costmap[y,x] = 0
+    """
 
 
 
