@@ -1,0 +1,7 @@
+<launch>
+
+  <node pkg="autonomous_exploration" type="costmap_2d.py" name="costmap" />
+  <node pkg="autonomous_exploration" type="trajectory_planner.py" name="trajectory_planner" />
+  <node pkg="autonomous_exploration" type="simple_local_planner.py" name="local_planner" />
+
+</launch>
