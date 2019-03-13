@@ -7,7 +7,7 @@ from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped, Pose2D
 from std_msgs.msg import Bool
 
-POINT_STEP = 5
+POINT_STEP = 4
 
 def unit_vector(vector):
     """ Returns the unit vector of the vector.  """

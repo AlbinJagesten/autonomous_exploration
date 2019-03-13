@@ -7,7 +7,7 @@ import operator
 
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.msg import Path
-from geometry_msgs.msg import PoseStamped, Pose
+from geometry_msgs.msg import PoseStamped, Pose, Pose2D
 from std_msgs.msg import Bool
 
 # Threshold for considering an unknown cell a candidate goal cell
@@ -31,6 +31,7 @@ class TrajectoryPlanner:
         self.trans_listener = tf.TransformListener()
         
         self.traj_pub = rospy.Publisher('/cmd_path', Path, queue_size=1)
+	self.auto_goal_pub = rospy.Publisher('/auto_goal', Pose2D, queue_size=1)
         self.exp_complete_pub = rospy.Publisher('/exploration_complete', Bool, queue_size=1)
 
         self.number_of_fails = 0
@@ -104,6 +105,7 @@ class TrajectoryPlanner:
             next_node = to_explore.pop(0)
             if next_node.cost == -1:
                 print("Found goal!")
+		self.send_final_pose(next_node)
                 self.number_of_fails = 0
                 self.get_trajectory(next_node)
                 return
@@ -170,6 +172,16 @@ class TrajectoryPlanner:
                 count += 1
 
         return count
+
+
+    def send_final_pose(self, node):
+	msg = Pose2D()
+	msg.x = (node.x - self.w / 2 + 0.5 + self.x_offset)*self.metadata.resolution
+        msg.y = (node.y - self.h / 2 + 0.5 + self.y_offset)*self.metadata.resolution
+	dot = node.x * node.parent.x + node.y * node.parent.y
+	det = node.parent.x * node.y - node.x * node.parent.y
+	msg.theta = np.arctan2(det, dot)
+	self.auto_goal_pub.publish(msg)
 
 
     def get_trajectory(self, node):
