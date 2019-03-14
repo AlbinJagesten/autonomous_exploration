@@ -32,7 +32,7 @@ class CostMap:
         
         rospy.Subscriber('/map', OccupancyGrid, self.map_callback)
         
-        self.pub = rospy.Publisher('costmap_2d', OccupancyGrid, queue_size=1)
+        self.pub = rospy.Publisher('/costmap_2d', OccupancyGrid, queue_size=1)
         rospy.Subscriber('/exploration_complete', Bool, self.exploration_complete_callback)
         
         self.map = None
@@ -159,15 +159,6 @@ class CostMap:
 
                 if (self.costmap[i,j] < cost_decay_int) and (cost_decay_int < 99) and (cost_decay_int > 1):
                     self.costmap[i,j] = cost_decay_int
-        
-
-    """
-    def update_unknown_space(self,y,x):
-
-    	if self.map[y,x] == -1 and self.costmap[y,x] == 1:	#if unknown and was previously free space (non obstacle)
-    		self.costmap[y,x] = 0
-    """
-
 
 
     def run(self):

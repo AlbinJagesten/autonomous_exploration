@@ -175,13 +175,13 @@ class TrajectoryPlanner:
 
 
     def send_final_pose(self, node):
-	msg = Pose2D()
-	msg.x = (node.x - self.w / 2 + 0.5 + self.x_offset)*self.metadata.resolution
-        msg.y = (node.y - self.h / 2 + 0.5 + self.y_offset)*self.metadata.resolution
-	dot = node.x * node.parent.x + node.y * node.parent.y
-	det = node.parent.x * node.y - node.x * node.parent.y
-	msg.theta = np.arctan2(det, dot)
-	self.auto_goal_pub.publish(msg)
+        msg = Pose2D()
+        msg.x = (node.x - self.w / 2 + 0.5 + self.x_offset)*self.metadata.resolution
+            msg.y = (node.y - self.h / 2 + 0.5 + self.y_offset)*self.metadata.resolution
+        dot = node.x * node.parent.x + node.y * node.parent.y
+        det = node.parent.x * node.y - node.x * node.parent.y
+        msg.theta = np.arctan2(det, dot)
+        self.auto_goal_pub.publish(msg)
 
 
     def get_trajectory(self, node):
