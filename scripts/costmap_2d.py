@@ -72,10 +72,6 @@ class CostMap:
                         self.costmap[i,j] = 1
 
         self.update_costmap()
-        
-
-        print("max",np.max(self.costmap))
-        print("min",np.min(self.costmap))
 
 
     def update_costmap(self):
@@ -103,7 +99,6 @@ class CostMap:
                 val = self.map[y,x]
 
 
-
                 if val == 100 and self.costmap[y,x] !=100: #obstacle
                     self.costmap[y,x] = 100
                     self.make_square(y,x)
@@ -111,7 +106,6 @@ class CostMap:
 
                 elif val == 0 and self.costmap[y,x] ==0: #known free space
                     self.costmap[y,x] = 1
-
 
 
     def make_square(self,y,x):
@@ -130,13 +124,14 @@ class CostMap:
                 if self.costmap[i,j] != 100:
                     self.costmap[i,j] = 99
 
-    def decay_obstacle(self,y,x):
-    	"""
-    	Adds a cost as per a decay function around an obstacle
-    	"""
 
-    	r = int(np.ceil(self.radius / self.metadata.resolution))
-    	R = DECAY_RADIUS_MULTIPLIER*r 	#add decay for distance 5*r 
+    def decay_obstacle(self,y,x):
+        """
+        Adds a cost as per a decay function around an obstacle
+        """
+
+        r = int(np.ceil(self.radius / self.metadata.resolution))
+        R = DECAY_RADIUS_MULTIPLIER*r #add decay for distance 5*r 
         min_x = max(0, x - R)
         max_x = min(self.w , x + R + 1)
         min_y = max(0, y - R)
@@ -146,15 +141,15 @@ class CostMap:
         for i in range(min_y,max_y):
             for j in range(min_x,max_x):
 
-            	#calculate the decay value:
-            	dist_x = np.absolute(x - j)
-            	dist_y = np.absolute(y - i)
-            	dist = np.sqrt(dist_x**2 + dist_y**2)
+                #calculate the decay value:
+                dist_x = np.absolute(x - j)
+                dist_y = np.absolute(y - i)
+                dist = np.sqrt(dist_x**2 + dist_y**2)
 
-            	#implementing linear cost decay
-            	cost_decay = (dist - R)*(98-2)/(r-R) + 2
+                #implementing linear cost decay
+                cost_decay = (dist - R)*(98-2)/(r-R) + 2
 
-            	cost_decay_int = np.rint(cost_decay)
+                cost_decay_int = np.rint(cost_decay)
 
 
                 if (self.costmap[i,j] < cost_decay_int) and (cost_decay_int < 99) and (cost_decay_int > 1):
